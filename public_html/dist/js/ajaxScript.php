@@ -775,7 +775,14 @@ function goBack() {
 <script type="text/javascript">
   //all script sales from calculation needed (start)
 
-
+      function validationDiscount(id){
+          var input =  $('#'+id);
+          if (input.val() == '' ){
+              input.val(0);
+          }else{
+              input.val(Number(input.val()));
+          }
+      }
 
       //single product sale discount calculet(start)
       function prodcalculate() {
@@ -820,6 +827,13 @@ function goBack() {
               $("#grandtotallast").val(totalprice.toFixed());
               $("#vatTotallast").val(totalprice.toFixed());
               $("#saleDiscshow").val(total.toFixed());
+          }else{
+              totalprice = +$("#totalamount").val() + total;
+              $("#grandtotal").val(totalprice.toFixed());
+              $("#grandtotaldue").val(totalprice.toFixed());
+              $("#grandtotallast").val(totalprice.toFixed());
+              $("#vatTotallast").val(totalprice.toFixed());
+              $("#saleDiscshow").val(total.toFixed());
           }
       }
       $(document).on( 'input', '.saleDisc', function(){ calculateTotalDiscount(); } );
@@ -835,6 +849,12 @@ function goBack() {
               $("#grandtotaldue").val(grandtotalaftervat.toFixed());
               $("#grandtotallast").val(grandtotalaftervat.toFixed());
               $("#vatAmount").val(total.toFixed());
+          }else{
+              grandtotalaftervat = +$("#vatTotallast").val() - total;
+              $("#grandtotal").val(grandtotalaftervat.toFixed());
+              $("#grandtotaldue").val(grandtotalaftervat.toFixed());
+              $("#grandtotallast").val(grandtotalaftervat.toFixed());
+              $("#vatAmount").val(total.toFixed());
           }
         }
       $(document).on( 'input', '.vat', function(){ calculateTotalDiscount(); } );
@@ -844,6 +864,7 @@ function goBack() {
         prodcalculate();
         allsalecalculate();
         allSaleVatCalculate();
+        totalPay();
       }
 
       //salse price new input calculet (start)
@@ -881,11 +902,17 @@ function goBack() {
             var name = $("#name").val();
             var customerId = $("#cus").val();
 
-            //if (duetotal >= 0 && name != "" || duetotal >= 0 && customerId != "") {
-            if (duetotal < 0 || name == "" && duetotal < 0 || customerId == "") {
+
+            // if (duetotal < 0 || name == "" && duetotal < 0 || customerId == "") {
+            if (duetotal < 0 && name == "" ) {
                 $('#btn').hide();
                 $('#mess').html('<span style="color:red">wrong input!! please crrrect inputs to proceed.</span>');
             }else{
+                $('#btn').show();
+                $('#mess').html('');
+            }
+
+            if (customerId != "") {
                 $('#btn').show();
                 $('#mess').html('');
             }
@@ -893,7 +920,7 @@ function goBack() {
 
 
 
-      //sale pay amount calculet (start)
+      //sale pay amount calculate (start)
       function totalPay(){
         var totalamount = 0;
         var total = $("#grandtotal").val();
@@ -905,12 +932,50 @@ function goBack() {
         $("#grandtotaldue").val(totalamount.toFixed());
 
           checkDueAmount();
+          customerBalanceCalculate();
       }
       $(document).on( 'input', '.nagod', function(){ totalPay(); } );
       $(document).on( 'input', '.bankAmount', function(){ totalPay(); } );
       $(document).on( 'input', '.chequeAmount', function(){ totalPay(); } );
 
-      //sale pay amount calculet (end)
+      //sale pay amount calculate (end)
+
+
+      function customerBalanceCalculate(){
+          var cus = $("#cus").val();
+          var balance = $("#customerBal").val();
+          var grandtotal = $("#grandtotal").val();
+
+          var nagod = $("#nagod").val();
+          var bankAmount = $("#bankAmount").val();
+          var chequeAmount = $("#chequeAmount").val();
+
+          var total = (((Number(balance) + Number(grandtotal)) - Number(nagod))- Number(bankAmount))-Number(chequeAmount);
+
+          if(cus === '') {
+              $('#balanceLast').html('');
+          }else{
+              $('#balanceLast').html('Last Balance: ৳ ' + total + '/-');
+          }
+      }
+
+
+      function customerBalanceShow(id){
+          $.ajax({
+              type: "POST",
+              url: "<?php echo site_url('Admin/Sales/customerBalance') ?>",
+              data: {customer_id:id},
+              beforeSend: function() {
+                  $("#loading-image").show();
+              },
+              success: function(data){
+                  $("#loading-image").hide();
+                  $('#balance').html('Balance: ৳ '+ data +'/-');
+                  $('#customerBal').val(data);
+                  customerBalanceCalculate();
+              }
+          });
+      }
 
     //all script sales from calculation needed (end)
 </script>
@@ -2866,6 +2931,7 @@ function opening_status(url){
           $('#mesWrong').html('Success');
       }
   }
+
 
 
 

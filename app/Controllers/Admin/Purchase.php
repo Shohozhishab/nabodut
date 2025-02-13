@@ -188,6 +188,8 @@ class Purchase extends BaseController
                     $this->cart->destroy();
                 }
             }
+            $table = DB()->table('suppliers');
+            $data['supplier'] = $table->where('supplier_id',$this->session->supplierId)->get()->getRow();
 
             $data['supplierId'] = $this->session->supplierId;
             $data['purchaseId'] = $this->session->purchaseId;
@@ -583,7 +585,7 @@ class Purchase extends BaseController
         $data['unit_1'] = $this->request->getPost('unit_1');
         $data['unit_2'] = $this->request->getPost('unit_2');
         $data['price'] = $this->request->getPost('price');
-        $data['salePrice'] = $this->request->getPost('salePrice');
+        $data['salePrice'] = ($this->request->getPost('salePrice'))??0;
         $data['qty_ton'] = $this->request->getPost('qty_ton');
         $data['qty_kg'] = $this->request->getPost('qty_kg');
 
@@ -592,7 +594,6 @@ class Purchase extends BaseController
             'category' => ['label' => 'category', 'rules' => 'required'],
             'name' => ['label' => 'name', 'rules' => 'required'],
             'price' => ['label' => 'price', 'rules' => 'required'],
-            'salePrice' => ['label' => 'salePrice', 'rules' => 'required'],
         ]);
 
         if ($this->validation->run($data) == FALSE) {
