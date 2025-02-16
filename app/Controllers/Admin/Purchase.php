@@ -285,271 +285,273 @@ class Purchase extends BaseController
         $dueAmount = str_replace(',', '', $this->request->getPost('due'));
         $bankId = $this->request->getPost('bank_id');
 
-        DB()->transStart();
+
         if ($totalPrice > 0) {
-            //purshase total price calculet to suppliers balance and update suppliers balance or create suppliers ledger (start)
-            $supplierCash = get_data_by_id('balance', 'suppliers', 'supplier_id', $supplierId);
-            $newCash = $supplierCash - $totalPrice;
+            DB()->transStart();
+                //purshase total price calculet to suppliers balance and update suppliers balance or create suppliers ledger (start)
+                $supplierCash = get_data_by_id('balance', 'suppliers', 'supplier_id', $supplierId);
+                $newCash = $supplierCash - $totalPrice;
 
-            $suppData = array(
-                'balance' => $newCash,
-                'updatedBy' => $userId,
-            );
-            $tabsuppliers = DB()->table('suppliers');
-            $tabsuppliers->where('supplier_id', $supplierId)->update($suppData);
-
-            //create suppliers ledger
-            $lgSuplData = array(
-                'sch_id' => $shopId,
-                'supplier_id' => $supplierId,
-                'purchase_id' => $purchaseId,
-                'particulars' => 'Purchase Cash Due',
-                'trangaction_type' => 'Cr.',
-                'amount' => $totalPrice,
-                'rest_balance' => $newCash,
-                'createdBy' => $userId,
-                'createdDtm' => date('Y-m-d h:i:s')
-            );
-            $tabledger_suppliers = DB()->table('ledger_suppliers');
-            $tabledger_suppliers->insert($lgSuplData);
-            //purshase total price calculet to suppliers balance and update suppliers balance or create suppliers ledger (end)
-
-
-            // purchase balance update and ledger create (start)
-            $purchaseBal = get_data_by_id('purchase_balance', 'shops', 'sch_id', $shopId);
-            $restBalPurc = $purchaseBal + $totalPrice;
-
-
-            $purUpdata = array('purchase_balance' => $restBalPurc);
-            $tabshops = DB()->table('shops');
-            $tabshops->where('sch_id', $shopId)->update($purUpdata);
-
-
-            $purLedgData = array(
-                'sch_id' => $shopId,
-                'purchase_id' => $purchaseId,
-                'trangaction_type' => 'Dr.',
-                'particulars' => 'New purchase amount',
-                'amount' => $totalPrice,
-                'rest_balance' => $restBalPurc,
-                'createdBy' => $userId,
-                'createdDtm' => date('Y-m-d h:i:s')
-            );
-            $tabledger_purchase = DB()->table('ledger_purchase');
-            $tabledger_purchase->insert($purLedgData);
-            // purchase balance update and ledger create (end)
-
-
-            // stock balance update and ledger create (start)
-            $stockBal = get_data_by_id('stockAmount', 'shops', 'sch_id', $shopId);
-            $restBalStock = $stockBal + $totalPrice;
-
-
-            $stockUpdata = array('stockAmount' => $restBalStock);
-            $tabshopsSt = DB()->table('shops');
-            $tabshopsSt->where('sch_id', $shopId)->update($stockUpdata);
-
-
-            $stockLedgData = array(
-                'sch_id' => $shopId,
-                'purchase_id' => $purchaseId,
-                'trangaction_type' => 'Dr.',
-                'particulars' => 'New purchase amount',
-                'amount' => $totalPrice,
-                'rest_balance' => $restBalStock,
-                'createdBy' => $userId,
-                'createdDtm' => date('Y-m-d h:i:s')
-            );
-            $tabledger_stock = DB()->table('ledger_stock');
-            $tabledger_stock->insert($stockLedgData);
-            // stock balance update and ledger create (end)
-
-
-            if ($cashAmount > 0) {
-
-                //purshase pay cash amount calculet to shops cash and update shops cash or create ledger_nagodan statment in ledger_nagodan table (start)
-                $shopsCash = get_data_by_id('cash', 'shops', 'sch_id', $shopId);
-
-                if ($shopsCash >= $cashAmount) {
-                    $upCahs = $shopsCash - $cashAmount;
-                    $shopsData = array(
-                        'cash' => $upCahs,
-                        'updatedBy' => $userId,
-                    );
-                    $tabshops = DB()->table('shops');
-                    $tabshops->where('sch_id', $shopId)->update($shopsData);
-
-                    //nagodan ledger create
-                    $lgNagData = array(
-                        'sch_id' => $shopId,
-                        'purchase_id' => $purchaseId,
-                        'trangaction_type' => 'Cr.',
-                        'particulars' => 'Purchase Cash Pay',
-                        'amount' => $cashAmount,
-                        'rest_balance' => $upCahs,
-                        'createdBy' => $userId,
-                        'createdDtm' => date('Y-m-d h:i:s')
-                    );
-                    $tabledger_nagodan = DB()->table('ledger_nagodan');
-                    $tabledger_nagodan->insert($lgNagData);
-                    //purshase pay cash amount calculet to shops cash and update shops cash or create ledger_nagodan statment in ledger_nagodan table (end)
-
-
-                    //purshase pay cash amount calculet to suppliers balance and update suppliers balance or create supplier ledger in ledger_suppliers table (start)
-                    $supplierccCash = get_data_by_id('balance', 'suppliers', 'supplier_id', $supplierId);
-                    $suppCash = $supplierccCash + $cashAmount;
-
-                    $cashsuppData = array(
-                        'balance' => $suppCash,
-                        'updatedBy' => $userId,
-                    );
-                    $tabsuppliers = DB()->table('suppliers');
-                    $tabsuppliers->where('supplier_id', $supplierId)->update($cashsuppData);
-
-                    //suppliers ledger create
-                    $lgSuplData = array(
-                        'sch_id' => $shopId,
-                        'supplier_id' => $supplierId,
-                        'purchase_id' => $purchaseId,
-                        'particulars' => 'Purchase Cash Pay',
-                        'trangaction_type' => 'Dr.',
-                        'amount' => $cashAmount,
-                        'rest_balance' => $suppCash,
-                        'createdBy' => $userId,
-                        'createdDtm' => date('Y-m-d h:i:s')
-                    );
-                    $tabledger_suppliers = DB()->table('ledger_suppliers');
-                    $tabledger_suppliers->insert($lgSuplData);
-                }
-                //purshase pay cash amount calculet to suppliers balance and update suppliers balance or create supplier ledger in ledger_suppliers table (end)
-            }
-
-            if ($bankAmount > 0) {
-
-                //purshase pay bank amountcalculet to bank balance and update bank balance or create bank ledger in ledger_bank table (start)
-                $bankCash = get_data_by_id('balance', 'bank', 'bank_id', $bankId);
-
-                if ($bankCash >= $bankAmount) {
-
-                    $upCahs = $bankCash - $bankAmount;
-                    $bankData = array(
-                        'balance' => $upCahs,
-                        'updatedBy' => $userId,
-                    );
-                    $tabbank = DB()->table('bank');
-                    $tabbank->where('bank_id', $bankId)->update($bankData);
-
-                    //bank ledger create
-                    $lgBankData = array(
-                        'sch_id' => $shopId,
-                        'bank_id' => $bankId,
-                        'purchase_id' => $purchaseId,
-                        'trangaction_type' => 'Cr.',
-                        'particulars' => 'Purchase Bank Pay',
-                        'amount' => $bankAmount,
-                        'rest_balance' => $upCahs,
-                        'createdBy' => $userId,
-                        'createdDtm' => date('Y-m-d h:i:s')
-                    );
-                    $tabledger_bank = DB()->table('ledger_bank');
-                    $tabledger_bank->insert($lgBankData);
-                    //purshase pay bank amountcalculet to bank balance and update bank balance or create bank ledger in ledger_bank table (end)
-
-
-                    //purshase pay bank amount calculet to suppliers balance and update suppliers balance or create supplier ledger in ledger_suppliers table (start)
-                    $supplierbbCash = get_data_by_id('balance', 'suppliers', 'supplier_id', $supplierId);
-                    $suppBaCash = $supplierbbCash + $bankAmount;
-
-                    $banksuppData = array(
-                        'balance' => $suppBaCash,
-                        'updatedBy' => $userId,
-                    );
-                    $tabsuppliers = DB()->table('suppliers');
-                    $tabsuppliers->where('supplier_id', $supplierId)->update($banksuppData);
-
-                    //suppliers ledger create
-                    $lgSuplData = array(
-                        'sch_id' => $shopId,
-                        'supplier_id' => $supplierId,
-                        'purchase_id' => $purchaseId,
-                        'particulars' => 'Purchase Bank Pay',
-                        'trangaction_type' => 'Dr.',
-                        'amount' => $bankAmount,
-                        'rest_balance' => $suppBaCash,
-                        'createdBy' => $userId,
-                        'createdDtm' => date('Y-m-d h:i:s')
-                    );
-                    $tabledger_suppliers = DB()->table('ledger_suppliers');
-                    $tabledger_suppliers->insert($lgSuplData);
-                }
-                //purshase pay bank amount calculet to suppliers balance and update suppliers balance or create supplier ledger in ledger_suppliers table (end)
-            }
-
-
-            //purchase product insert in product table and purchase item table (start)
-            foreach ($returnchecked as $value) {
-                $k = array_flip($products);
-                $key = $k[$value];
-
-                $qtyTotal = $this->calculate_unit_and_price ->convert_total_kg($qty_ton[$key],$qty_kg[$key]);
-                $product_id = $value;
-                $quantity = $qtyTotal;
-                $price = $productPrice[$key];
-                //Update each product quantity and price
-                $exixQunt = get_data_by_id('quantity', 'products', 'prod_id', $product_id);
-                $newQunt = $exixQunt + $quantity;
-
-                $data = array(
-                    'quantity' => $newQunt,
-                    'purchase_price' => $price,
+                $suppData = array(
+                    'balance' => $newCash,
+                    'updatedBy' => $userId,
                 );
-                $tabproducts = DB()->table('products');
-                $tabproducts->where('prod_id', $product_id)->update($data);
+                $tabsuppliers = DB()->table('suppliers');
+                $tabsuppliers->where('supplier_id', $supplierId)->update($suppData);
 
-                //insetr purchase Item in purchase item table
-                $total_price = $price * $quantity;
-                $purItemData = array(
-                    'prod_id' => $product_id,
+                //create suppliers ledger
+                $lgSuplData = array(
+                    'sch_id' => $shopId,
+                    'supplier_id' => $supplierId,
                     'purchase_id' => $purchaseId,
-                    'quantity' => $quantity,
-                    'purchase_price' => $price,
-                    'total_price' => $total_price,
+                    'particulars' => 'Purchase Cash Due',
+                    'trangaction_type' => 'Cr.',
+                    'amount' => $totalPrice,
+                    'rest_balance' => $newCash,
                     'createdBy' => $userId,
                     'createdDtm' => date('Y-m-d h:i:s')
                 );
-
-                $tabpurchase_item = DB()->table('purchase_item');
-                $tabpurchase_item->insert($purItemData);
-            }
-            //purchase product insert in product table and purchase item table (end)
+                $tabledger_suppliers = DB()->table('ledger_suppliers');
+                $tabledger_suppliers->insert($lgSuplData);
+                //purshase total price calculet to suppliers balance and update suppliers balance or create suppliers ledger (end)
 
 
-            //purchase all pay amount detail Update in purchase table(start)
-            $parsData = array(
-                'amount' => $totalPrice,
-                'nagad_paid' => $cashAmount,
-                'bank_paid' => $bankAmount,
-                'bank_id' => $bankId,
-                'due' => $dueAmount,
-                'updatedBy' => $userId,
-            );
-            $tabpurchase = DB()->table('purchase');
-            $tabpurchase->where('purchase_id', $purchaseId)->update($parsData);
-            //purchase all pay amount detail Update in purchase table(end)
-            if (!empty($sms)) {
-                $message = 'Thank you for your purchase.Your purchase amount is-' . $totalPrice;
-                $phone = get_data_by_id('phone', 'suppliers', 'supplier_id', $supplierId);
-                send_sms($phone, $message);
-            }
+                // purchase balance update and ledger create (start)
+                $purchaseBal = get_data_by_id('purchase_balance', 'shops', 'sch_id', $shopId);
+                $restBalPurc = $purchaseBal + $totalPrice;
+
+
+                $purUpdata = array('purchase_balance' => $restBalPurc);
+                $tabshops = DB()->table('shops');
+                $tabshops->where('sch_id', $shopId)->update($purUpdata);
+
+
+                $purLedgData = array(
+                    'sch_id' => $shopId,
+                    'purchase_id' => $purchaseId,
+                    'trangaction_type' => 'Dr.',
+                    'particulars' => 'New purchase amount',
+                    'amount' => $totalPrice,
+                    'rest_balance' => $restBalPurc,
+                    'createdBy' => $userId,
+                    'createdDtm' => date('Y-m-d h:i:s')
+                );
+                $tabledger_purchase = DB()->table('ledger_purchase');
+                $tabledger_purchase->insert($purLedgData);
+                // purchase balance update and ledger create (end)
+
+
+                // stock balance update and ledger create (start)
+                $stockBal = get_data_by_id('stockAmount', 'shops', 'sch_id', $shopId);
+                $restBalStock = $stockBal + $totalPrice;
+
+
+                $stockUpdata = array('stockAmount' => $restBalStock);
+                $tabshopsSt = DB()->table('shops');
+                $tabshopsSt->where('sch_id', $shopId)->update($stockUpdata);
+
+
+                $stockLedgData = array(
+                    'sch_id' => $shopId,
+                    'purchase_id' => $purchaseId,
+                    'trangaction_type' => 'Dr.',
+                    'particulars' => 'New purchase amount',
+                    'amount' => $totalPrice,
+                    'rest_balance' => $restBalStock,
+                    'createdBy' => $userId,
+                    'createdDtm' => date('Y-m-d h:i:s')
+                );
+                $tabledger_stock = DB()->table('ledger_stock');
+                $tabledger_stock->insert($stockLedgData);
+                // stock balance update and ledger create (end)
+
+
+                if ($cashAmount > 0) {
+
+                    //purshase pay cash amount calculet to shops cash and update shops cash or create ledger_nagodan statment in ledger_nagodan table (start)
+                    $shopsCash = get_data_by_id('cash', 'shops', 'sch_id', $shopId);
+
+                    if ($shopsCash >= $cashAmount) {
+                        $upCahs = $shopsCash - $cashAmount;
+                        $shopsData = array(
+                            'cash' => $upCahs,
+                            'updatedBy' => $userId,
+                        );
+                        $tabshops = DB()->table('shops');
+                        $tabshops->where('sch_id', $shopId)->update($shopsData);
+
+                        //nagodan ledger create
+                        $lgNagData = array(
+                            'sch_id' => $shopId,
+                            'purchase_id' => $purchaseId,
+                            'trangaction_type' => 'Cr.',
+                            'particulars' => 'Purchase Cash Pay',
+                            'amount' => $cashAmount,
+                            'rest_balance' => $upCahs,
+                            'createdBy' => $userId,
+                            'createdDtm' => date('Y-m-d h:i:s')
+                        );
+                        $tabledger_nagodan = DB()->table('ledger_nagodan');
+                        $tabledger_nagodan->insert($lgNagData);
+                        //purshase pay cash amount calculet to shops cash and update shops cash or create ledger_nagodan statment in ledger_nagodan table (end)
+
+
+                        //purshase pay cash amount calculet to suppliers balance and update suppliers balance or create supplier ledger in ledger_suppliers table (start)
+                        $supplierccCash = get_data_by_id('balance', 'suppliers', 'supplier_id', $supplierId);
+                        $suppCash = $supplierccCash + $cashAmount;
+
+                        $cashsuppData = array(
+                            'balance' => $suppCash,
+                            'updatedBy' => $userId,
+                        );
+                        $tabsuppliers = DB()->table('suppliers');
+                        $tabsuppliers->where('supplier_id', $supplierId)->update($cashsuppData);
+
+                        //suppliers ledger create
+                        $lgSuplData = array(
+                            'sch_id' => $shopId,
+                            'supplier_id' => $supplierId,
+                            'purchase_id' => $purchaseId,
+                            'particulars' => 'Purchase Cash Pay',
+                            'trangaction_type' => 'Dr.',
+                            'amount' => $cashAmount,
+                            'rest_balance' => $suppCash,
+                            'createdBy' => $userId,
+                            'createdDtm' => date('Y-m-d h:i:s')
+                        );
+                        $tabledger_suppliers = DB()->table('ledger_suppliers');
+                        $tabledger_suppliers->insert($lgSuplData);
+                    }
+                    //purshase pay cash amount calculet to suppliers balance and update suppliers balance or create supplier ledger in ledger_suppliers table (end)
+                }
+
+                if ($bankAmount > 0) {
+
+                    //purshase pay bank amountcalculet to bank balance and update bank balance or create bank ledger in ledger_bank table (start)
+                    $bankCash = get_data_by_id('balance', 'bank', 'bank_id', $bankId);
+
+                    if ($bankCash >= $bankAmount) {
+
+                        $upCahs = $bankCash - $bankAmount;
+                        $bankData = array(
+                            'balance' => $upCahs,
+                            'updatedBy' => $userId,
+                        );
+                        $tabbank = DB()->table('bank');
+                        $tabbank->where('bank_id', $bankId)->update($bankData);
+
+                        //bank ledger create
+                        $lgBankData = array(
+                            'sch_id' => $shopId,
+                            'bank_id' => $bankId,
+                            'purchase_id' => $purchaseId,
+                            'trangaction_type' => 'Cr.',
+                            'particulars' => 'Purchase Bank Pay',
+                            'amount' => $bankAmount,
+                            'rest_balance' => $upCahs,
+                            'createdBy' => $userId,
+                            'createdDtm' => date('Y-m-d h:i:s')
+                        );
+                        $tabledger_bank = DB()->table('ledger_bank');
+                        $tabledger_bank->insert($lgBankData);
+                        //purshase pay bank amountcalculet to bank balance and update bank balance or create bank ledger in ledger_bank table (end)
+
+
+                        //purshase pay bank amount calculet to suppliers balance and update suppliers balance or create supplier ledger in ledger_suppliers table (start)
+                        $supplierbbCash = get_data_by_id('balance', 'suppliers', 'supplier_id', $supplierId);
+                        $suppBaCash = $supplierbbCash + $bankAmount;
+
+                        $banksuppData = array(
+                            'balance' => $suppBaCash,
+                            'updatedBy' => $userId,
+                        );
+                        $tabsuppliers = DB()->table('suppliers');
+                        $tabsuppliers->where('supplier_id', $supplierId)->update($banksuppData);
+
+                        //suppliers ledger create
+                        $lgSuplData = array(
+                            'sch_id' => $shopId,
+                            'supplier_id' => $supplierId,
+                            'purchase_id' => $purchaseId,
+                            'particulars' => 'Purchase Bank Pay',
+                            'trangaction_type' => 'Dr.',
+                            'amount' => $bankAmount,
+                            'rest_balance' => $suppBaCash,
+                            'createdBy' => $userId,
+                            'createdDtm' => date('Y-m-d h:i:s')
+                        );
+                        $tabledger_suppliers = DB()->table('ledger_suppliers');
+                        $tabledger_suppliers->insert($lgSuplData);
+                    }
+                    //purshase pay bank amount calculet to suppliers balance and update suppliers balance or create supplier ledger in ledger_suppliers table (end)
+                }
+
+
+                //purchase product insert in product table and purchase item table (start)
+                foreach ($returnchecked as $value) {
+                    $k = array_flip($products);
+                    $key = $k[$value];
+
+                    $qtyTotal = $this->calculate_unit_and_price ->convert_total_kg($qty_ton[$key],$qty_kg[$key]);
+                    $product_id = $value;
+                    $quantity = $qtyTotal;
+                    $price = $productPrice[$key];
+                    //Update each product quantity and price
+                    $exixQunt = get_data_by_id('quantity', 'products', 'prod_id', $product_id);
+                    $newQunt = $exixQunt + $quantity;
+
+                    $data = array(
+                        'quantity' => $newQunt,
+                        'purchase_price' => $price,
+                    );
+                    $tabproducts = DB()->table('products');
+                    $tabproducts->where('prod_id', $product_id)->update($data);
+
+                    //insetr purchase Item in purchase item table
+                    $total_price = $price * $quantity;
+                    $purItemData = array(
+                        'prod_id' => $product_id,
+                        'purchase_id' => $purchaseId,
+                        'quantity' => $quantity,
+                        'purchase_price' => $price,
+                        'total_price' => $total_price,
+                        'createdBy' => $userId,
+                        'createdDtm' => date('Y-m-d h:i:s')
+                    );
+
+                    $tabpurchase_item = DB()->table('purchase_item');
+                    $tabpurchase_item->insert($purItemData);
+                }
+                //purchase product insert in product table and purchase item table (end)
+
+
+                //purchase all pay amount detail Update in purchase table(start)
+                $parsData = array(
+                    'amount' => $totalPrice,
+                    'nagad_paid' => $cashAmount,
+                    'bank_paid' => $bankAmount,
+                    'bank_id' => $bankId,
+                    'due' => $dueAmount,
+                    'updatedBy' => $userId,
+                );
+                $tabpurchase = DB()->table('purchase');
+                $tabpurchase->where('purchase_id', $purchaseId)->update($parsData);
+                //purchase all pay amount detail Update in purchase table(end)
+                if (!empty($sms)) {
+                    $message = 'Thank you for your purchase.Your purchase amount is-' . $totalPrice;
+                    $phone = get_data_by_id('phone', 'suppliers', 'supplier_id', $supplierId);
+                    send_sms($phone, $message);
+                }
+            DB()->transComplete();
+            $this->session->setFlashdata('message', '<div class="alert alert-success alert-dismissible" role="alert">Create Record Success! <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>');
+            return redirect()->to(site_url('Admin/Purchase'));
         } else {
             $this->session->setFlashdata('message', '<div style="margin-top: 12px" class="alert alert-danger" id="message">Invalid Quantity</div>');
-            redirect(site_url('purchase'));
+            return redirect()->to(site_url('Admin/Purchase'));
         }
-        DB()->transComplete();
 
 
-        $this->session->setFlashdata('message', '<div class="alert alert-success alert-dismissible" role="alert">Create Record Success! <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>');
-        return redirect()->to(site_url('Admin/Purchase'));
+
     }
 
     /**

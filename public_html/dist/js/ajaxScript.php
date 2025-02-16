@@ -185,20 +185,21 @@ function goBack() {
           {
               if($('input.datatables')[i].checked) {
                   totalQty = total_kg_calculate(qty_ton[i].value,qty_kg[i].value);
-                  quantity =  totalQty;
-                  purchase_price = pur_price[i].value;
+                  quantity =  Number(totalQty);
+                  purchase_price = Number(pur_price[i].value);
                   itemPrice = purchase_price * totalQty;
-                  totalPrice = totalPrice + itemPrice;
+                  totalPrice = Number(totalPrice) + Number(itemPrice);
               }
           }
-          $("#totalAmount").val(totalPrice);
-          $("#totalDueAmount").val(totalPrice);
+
+          $("#totalAmount").val(totalPrice.toFixed());
+          $("#totalDueAmount").val(totalPrice.toFixed());
 
       }
 
       function total_kg_calculate(ton,kg){
-          var ton_to_kg = ton * 1000;
-          return ton_to_kg+kg;
+          var ton_to_kg = Number(ton) * Number(1000);
+          return Number(ton_to_kg)+Number(kg);
       }
 
         $(document).on( 'input', '.datatables', function(){ calculateExixPrice(); } );
