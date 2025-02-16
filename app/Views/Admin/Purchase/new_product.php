@@ -24,8 +24,9 @@
                         <form action="<?php echo $action; ?>" method="post">
                             <div class="col-lg-12">
                                 <div class="box">
-                                    <div class="box-header">
+                                    <div class="box-header" >
                                         <h3 class="box-title">Purchase Product Add</h3>
+                                        <p style="float: right;">Supplier: <?= $supplier->name;?>. Balance: <?= showWithCurrencySymbol($supplier->balance);?></p>
                                     </div>
                                     <div class="box-body ">
                                         <input type="hidden" class="form-control" name="purchase_id"
@@ -73,7 +74,7 @@
                                             <label for="int">Selling Price</label>
                                             <input type="number" class="form-control selling_price"
                                                    oninput="minusValueCheck(this.value,this)"
-                                                   name="selling_price" id="selling_price"
+                                                   name="selling_price" value="0" id="selling_price"
                                                    placeholder="Selling Price"/>
                                         </div>
 <!--                                        <div class="form-group col-xs-3">-->

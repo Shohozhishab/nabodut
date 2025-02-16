@@ -109,9 +109,7 @@
                                                        value="<?php echo $calculate_library->par_ton_price_by_par_kg_price($row['price']); ?>">
                                             </td>
                                             <?php if (isset($discount) AND ($discount == 1)) { ?>
-                                                <td><input type="number" step=any class="form-control disc"
-                                                           oninput="minusValueCheck(this.value,this)" name="disc[]"
-                                                           id="disc"></td>
+                                                <td><input type="number" step=any class="form-control disc" oninput="minusValueCheck(this.value,this),validationDiscount('disc_<?= $row['id']?>')" name="disc[]" id="disc_<?= $row['id']?>" ></td>
                                             <?php } ?>
                                             <td>
                                                 <input type="hidden" readonly class="form-control subtotal"
@@ -172,15 +170,17 @@
                                 <div class="tab-pane fade active in" id="existing">
                                     <div class="row">
                                         <div class="col-xs-12">
-                                            <select class="form-control select2 select2-hidden-accessible"
-                                                    onchange="createBtnShow()" style=" width: 100%;"
+                                            <select class="form-control select2 select2-hidden-accessible cus"
+                                                    onchange="createBtnShow(),customerBalanceShow(this.value)" style=" width: 100%;"
                                                     tabindex="-1" aria-hidden="true" name="customer_id"
                                                     id="cus">
 
                                                 <option selected="selected" value="">Please Select</option>
                                                 <?php echo getAllListInOptionWithStatus('customer_id', 'customer_id', 'customer_name', 'customers','customer_name'); ?>
                                             </select>
-
+                                            <span id="balance"></span><br>
+                                            <span id="balanceLast"></span>
+                                            <input type="hidden" name="customerBal" id="customerBal" value="0">
                                         </div>
                                     </div>
                                 </div>

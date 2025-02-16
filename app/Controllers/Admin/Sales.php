@@ -118,14 +118,17 @@ class Sales extends BaseController
             $image = ($sval->picture == NULL) ? 'no_image.jpg' : $sval->picture;
             $unit = get_data_by_id('unit', 'products', 'prod_id', $sval->prod_id);
 
+            $totalCalculet = $this->calculate_unit_and_price->convert_total_kg_to_ton($sval->quantity);
+            $totalQty = $totalCalculet['ton'].' Ton '.$totalCalculet['kg'].  ' KG';
+
             $view = $view . '<li>
                             <form action="' . site_url('Admin/Sales/add_cart') . '" method="post">
                                 <div class="col-xs-12" style="padding:15px; border-bottom: 1px solid;color: #d2d6de;" ><a>
                                 <div class="col-xs-1 sel_css">
                                     <img class="img-circle" src="' . base_url() . '/uploads/product_image/' . $image . '" width="40" height="40">
                                 </div>
-                                <div class="col-xs-3 sel_css"><label for="usr">Product Name /Price:</label><h4 style="color:black;">' . $sval->name . '/' . $this->calculate_unit_and_price->par_ton_price_by_par_kg_price($sval->selling_price) . 'Tk.</h4><input class="form-control" type="hidden" readonly id="name" name="name" value="' . $sval->name . '"><input class="form-control" type="hidden" readonly id="price" name="price" value="' . $sval->selling_price . '"><input class="form-control" type="hidden" readonly id="prod_id" name="prod_id" value="' . $sval->prod_id . '"></div>
-                                <div class="col-xs-2 sel_css"><span for="usr">Product Category:</span><br><h4 style="color:black;">' . get_data_by_id('product_category', 'product_category', 'prod_cat_id', $sval->prod_cat_id) . '</h4>
+                                <div class="col-xs-3 sel_css"><label for="usr">Product Name :</label><h4 style="color:black;">' . $sval->name. '</h4><input class="form-control" type="hidden" readonly id="name" name="name" value="' . $sval->name . '"><input class="form-control" type="text" id="price" name="price" value="' . $this->calculate_unit_and_price->par_ton_price_by_par_kg_price($sval->selling_price) . '"><input class="form-control" type="hidden" readonly id="prod_id" name="prod_id" value="' . $sval->prod_id . '"></div>
+                                <div class="col-xs-2 sel_css"><span for="usr">Category:</span><br><h5 style="color:black;">' . get_data_by_id('product_category', 'product_category', 'prod_cat_id', $sval->prod_cat_id) . '</h5>'.$totalQty.'
                                 </div>
                                 <div class="col-xs-4 sel_css"><span>Quantity:</span>
                                     <div  style="display: flex;">
@@ -158,44 +161,50 @@ class Sales extends BaseController
      */
     public function add_cart()
     {
-
-        $proId = $this->request->getPost('prod_id');
-        $proName = $this->request->getPost('name');
         $proPrice = $this->request->getPost('price');
-        $qty_ton = $this->request->getPost('qty_ton');
-        $qty_kg = $this->request->getPost('qty_kg');
+        if (!empty($proPrice)) {
+            $proId = $this->request->getPost('prod_id');
+            $proName = $this->request->getPost('name');
+            $price = $this->calculate_unit_and_price->ton_price_to_kg_price($proPrice);
+            $qty_ton = $this->request->getPost('qty_ton');
+            $qty_kg = $this->request->getPost('qty_kg');
 
-        $quantity = $this->calculate_unit_and_price->convert_total_kg($qty_ton,$qty_kg);
+            $quantity = $this->calculate_unit_and_price->convert_total_kg($qty_ton, $qty_kg);
 
-        $productQnt = get_data_by_id('quantity', 'products', 'prod_id', $proId);
+            $productQnt = get_data_by_id('quantity', 'products', 'prod_id', $proId);
 
-        $qty = 0;
-        foreach ($this->cart->contents() as $row) {
-            if ($proId == $row['id']) {
-                $qty = $row['qty'];
+            $qty = 0;
+            foreach ($this->cart->contents() as $row) {
+                if ($proId == $row['id']) {
+                    $qty = $row['qty'];
+                }
             }
-        }
-        $totalquantity = $quantity + $qty;
+            $totalquantity = $quantity + $qty;
 
-        if ($productQnt >= $totalquantity) {
-            if ($quantity > 0) {
-                $data = array(
-                    'id' => $proId,
-                    'name' => strval($proName),
-                    'qty' => $quantity,
-                    'price' => $proPrice
-                );
-                $this->cart->insert($data);
+            if ($productQnt >= $totalquantity) {
+                if ($quantity > 0) {
+                    $data = array(
+                        'id' => $proId,
+                        'name' => strval($proName),
+                        'qty' => $quantity,
+                        'price' => $price
+                    );
+                    $this->cart->insert($data);
+                } else {
+                    $this->session->setFlashdata('message', '<div class="alert alert-danger alert-dismissible" role="alert"> Invalid Quantity  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>');
+                    return redirect()->to(site_url('Admin/Sales/create'));
+                }
+
             } else {
-                $this->session->setFlashdata('message', '<div class="alert alert-danger alert-dismissible" role="alert"> Invalid Quantity  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>');
-                return redirect()->to(site_url('Admin/Sales/create'));
-            }
-        } else {
-            $this->session->setFlashdata('message', '<div class="alert alert-warning alert-dismissible" role="alert">Warning: You have no available product quantity to sale<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>');
+                $this->session->setFlashdata('message', '<div class="alert alert-warning alert-dismissible" role="alert">Warning: You have no available product quantity to sale<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>');
 
+            }
+            $this->session->set('cartType', 'sale');
+            return redirect()->to(site_url('Admin/Sales/create'));
+        }else{
+            $this->session->setFlashdata('message', '<div class="alert alert-warning alert-dismissible" role="alert">Warning: Please input sale price<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>');
+            return redirect()->to(site_url('Admin/Sales/create'));
         }
-        $this->session->set('cartType', 'sale');
-        return redirect()->to(site_url('Admin/Sales/create'));
     }
 
     /**
@@ -321,7 +330,6 @@ class Sales extends BaseController
             $this->session->setFlashdata('message', '<div class="alert alert-danger alert-dismissible" role="alert">Please enter valid amount!<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>');
             return redirect()->to(site_url('Admin/Sales/create'));
         }
-
 
         DB()->transStart();
 
@@ -834,6 +842,14 @@ class Sales extends BaseController
         }
 
     }
+    public function customerBalance(){
+        $customerId = $this->request->getPost('customer_id');
+        $balance = get_data_by_id('balance', 'customers', 'customer_id', $customerId);
+        return $balance;
+    }
+
+
+
 
 
 }
