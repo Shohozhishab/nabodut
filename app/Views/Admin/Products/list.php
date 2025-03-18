@@ -20,10 +20,11 @@
                     <div class="box">
                         <div class="box-header">
                             <div class="row">
-                                <div class="col-lg-9">
+                                <div class="col-lg-4">
                                     <h3 class="box-title">Products List</h3>
                                 </div>
-                                <div class="col-lg-3">
+                                <div class="col-lg-8">
+                                    <a href="javascript:void(0)" onclick="showData('<?php echo site_url('/Admin/Products_ajax/add_existing_product/'); ?>','<?php echo '/Admin/Products/add_existing_product/'; ?>')" class="btn btn-info pull-right btn-xs" style="margin-left:10px;"><i class="fa fa-fw fa-tasks"></i> Add Existing Product</a>
                                     <a href="javascript:void(0)"
                                        onclick="showData('<?php echo site_url('/Admin/Products_short_list_ajax/'); ?>','<?php echo '/Admin/Products_short_list/'; ?>')"
                                        class="btn btn-danger pull-right btn-xs" style="margin-left:10px;"><i

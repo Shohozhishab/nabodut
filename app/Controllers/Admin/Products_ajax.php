@@ -89,7 +89,30 @@ class Products_ajax extends BaseController
         }
     }
 
+    public function add_existing_product(){
+        $isLoggedIn = $this->session->isLoggedIn;
+        $role_id = $this->session->role;
+        if (!isset($isLoggedIn) || $isLoggedIn != TRUE) {
+            return redirect()->to(site_url('Admin/login'));
+        } else {
+            $shopId = $this->session->shopId;
+            $productTable = DB()->table('products');
+            $data['products_data'] = $productTable->where('sch_id', $shopId)->where('deleted IS NULL')->get()->getResult();
 
+            $data['menu'] = view('Admin/menu_stock');
+            // All Permissions
+            //$perm = array('create','read','update','delete','mod_access');
+            $perm = $this->permission->module_permission_list($role_id, $this->module_name);
+            foreach ($perm as $key => $val) {
+                $data[$key] = $this->permission->have_access($role_id, $this->module_name, $key);
+            }
+            if (isset($data['mod_access']) and $data['mod_access'] == 1) {
+                echo view('Admin/Products/add_product', $data);
+            } else {
+                echo view('no_permission');
+            }
+        }
+    }
 
 
 }
