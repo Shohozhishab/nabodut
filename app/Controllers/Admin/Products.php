@@ -231,5 +231,136 @@ class Products extends BaseController
         echo view('Admin/footer');
     }
 
+    public function add_existing_product(){
+        $isLoggedIn = $this->session->isLoggedIn;
+        $role_id = $this->session->role;
+        if (!isset($isLoggedIn) || $isLoggedIn != TRUE) {
+            return redirect()->to(site_url('Admin/login'));
+        } else {
+            $shopId = $this->session->shopId;
+            $productTable = DB()->table('products');
+            $data['products_data'] = $productTable->where('sch_id', $shopId)->where('deleted IS NULL')->get()->getResult();
+
+            $data['menu'] = view('Admin/menu_stock');
+            // All Permissions
+            //$perm = array('create','read','update','delete','mod_access');
+            $perm = $this->permission->module_permission_list($role_id, $this->module_name);
+            foreach ($perm as $key => $val) {
+                $data[$key] = $this->permission->have_access($role_id, $this->module_name, $key);
+            }
+            echo view('Admin/header');
+            echo view('Admin/sidebar');
+            if (isset($data['mod_access']) and $data['mod_access'] == 1) {
+                echo view('Admin/Products/add_product', $data);
+            } else {
+                echo view('no_permission');
+            }
+            echo view('Admin/footer');
+        }
+    }
+
+    public function add_action(){
+        $data['prod_cat_id'] = $this->request->getPost('sub_category');
+        $data['name'] = $this->request->getPost('name');
+        $data['purchase_price'] = $this->request->getPost('price');
+        $data['selling_price'] = $this->request->getPost('selling_price');
+        $data['qty_ton'] = $this->request->getPost('qty_ton');
+        $data['qty_kg'] = $this->request->getPost('qty_kg');
+        $data['unit_1'] = $this->request->getPost('unit_1');
+        $data['unit_2'] = $this->request->getPost('unit_2');
+
+        $this->validation->setRules([
+            'prod_cat_id' => ['label' => 'Category', 'rules' => 'required'],
+            'name' => ['label' => 'name', 'rules' => 'required'],
+            'purchase_price' => ['label' => 'price', 'rules' => 'required'],
+            'selling_price' => ['label' => 'salePrice', 'rules' => 'required'],
+        ]);
+
+        if ($this->validation->run($data) == FALSE) {
+            print '<div class="alert alert-danger alert-dismissible" role="alert">' . $this->validation->listErrors() . ' <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
+        } else {
+
+            $purchasePrice =  $this->calculate_unit_and_price->ton_price_to_kg_price($data['purchase_price']);
+            $qty =  $this->calculate_unit_and_price->convert_total_kg($data['qty_ton'],$data['qty_kg']);
+            $sellingPrice =  $this->calculate_unit_and_price->ton_price_to_kg_price($data['selling_price']);
+
+
+            DB()->transStart();
+            $shopId = $this->session->shopId;
+
+            //get default store
+            $storeTab = DB()->table('stores');
+            $store = $storeTab->where('sch_id', $shopId)->where('is_default', 1)->get()->getRow();
+
+            //insert product
+            $dataPro['prod_cat_id'] = $data['prod_cat_id'];
+            $dataPro['name'] = $data['name'];
+            $dataPro['unit'] = $data['unit_2'];
+            $dataPro['unit_display'] = $data['unit_1'];
+
+            $dataPro['purchase_price'] = $purchasePrice;
+            $dataPro['selling_price'] = $sellingPrice;
+            $dataPro['quantity'] = $qty;
+            $dataPro['store_id'] = $store->store_id;
+            $dataPro['sch_id'] = $shopId;
+            $dataPro['createdBy'] = $this->session->userId;
+            $dataPro['createdDtm'] = date('Y-m-d H:i:s');
+            $productTable = DB()->table('products');
+            $productTable->insert($dataPro);
+
+
+            //total amount product
+            $totalAmountPro = $purchasePrice * $qty;
+
+            //capital last balance
+            $oldCapital = get_data_by_id('capital', 'shops', 'sch_id', $shopId);
+            $newCapital = $oldCapital - $totalAmountPro;
+
+            // capital ledger data insert
+            $cpitalLedData = array(
+                'sch_id' => $shopId,
+                'particulars' => 'New Existing Products Add Amount',
+                'trangaction_type' => 'Cr.',
+                'amount' => $totalAmountPro,
+                'rest_balance' => $newCapital,
+                'createdBy' => $this->session->userId,
+                'createdDtm' => date('Y-m-d h:i:s')
+            );
+            $ledger_capitalTable = DB()->table('ledger_capital');
+            $ledger_capitalTable->insert($cpitalLedData);
+            // capital ledger data insert
+
+
+            //stock last balance
+            $oldStock = get_data_by_id('stockAmount', 'shops', 'sch_id', $shopId);
+            $newStock = $oldStock + $totalAmountPro;
+
+            //Stock ledger data insert
+            $stockLedgData = array(
+                'sch_id' => $shopId,
+                'trangaction_type' => 'Dr.',
+                'particulars' => 'New Existing Products Add Amount',
+                'amount' => $totalAmountPro,
+                'rest_balance' => $newStock,
+                'createdBy' => $this->session->userId,
+                'createdDtm' => date('Y-m-d h:i:s')
+            );
+            $tabledger_stock = DB()->table('ledger_stock');
+            $tabledger_stock->insert($stockLedgData);
+            //Stock ledger data insert
+
+
+            //update capital and stock
+            $dataCapital['stockAmount'] = $newStock;
+            $dataCapital['capital'] = $newCapital;
+            $tableCapital = DB()->table('shops');
+            $tableCapital->where('sch_id', $shopId)->update($dataCapital);
+            DB()->transComplete();
+
+            print '<div class="alert alert-success alert-dismissible" role="alert"> Product added successfully  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
+
+        }
+    }
+
 
 }
